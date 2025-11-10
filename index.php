@@ -283,9 +283,20 @@ $title = "MausSynth Lab";
                 setupAudio();
             }
             if (!audioCtx) return;
-            masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-            masterGain.gain.setTargetAtTime(0.7, audioCtx.currentTime, 0.02);
-            lfoGain.gain.setTargetAtTime(900, audioCtx.currentTime, 0.08);
+
+            const resumePromise = audioCtx.state === 'suspended'
+                ? audioCtx.resume()
+                : Promise.resolve();
+
+            resumePromise
+                .then(() => {
+                    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    masterGain.gain.setTargetAtTime(0.7, audioCtx.currentTime, 0.02);
+                    lfoGain.gain.setTargetAtTime(900, audioCtx.currentTime, 0.08);
+                })
+                .catch((error) => {
+                    console.error('Failed to resume AudioContext', error);
+                });
         }
 
         function pointerUp() {
