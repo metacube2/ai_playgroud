@@ -13,7 +13,7 @@ if ($user['role'] === 'band') {
     $band = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $stmt = db()->prepare('UPDATE bands SET name = :name, city = :city, genre = :genre, price = :price, description = :description, style_tags = :tags, contact_email = :contact_email WHERE id = :id');
+        $stmt = db()->prepare('UPDATE bands SET name = :name, city = :city, genre = :genre, price = :price, description = :description, style_tags = :tags WHERE id = :id');
         $stmt->execute([
             ':name' => $_POST['name'],
             ':city' => $_POST['city'],
@@ -21,7 +21,6 @@ if ($user['role'] === 'band') {
             ':price' => (int) $_POST['price'],
             ':description' => $_POST['description'],
             ':tags' => $_POST['style_tags'],
-            ':contact_email' => $_POST['contact_email'] ?? '',
             ':id' => $band['id'],
         ]);
         $message = 'Bandprofil aktualisiert (wartet ggf. auf Freigabe).';
@@ -55,9 +54,6 @@ if ($user['role'] === 'band') {
                 </label>
                 <label>Genre
                     <input class="form-control" name="genre" value="<?= htmlspecialchars($band['genre']) ?>">
-                </label>
-                <label>Kontakt-E-Mail
-                    <input class="form-control" type="email" name="contact_email" value="<?= htmlspecialchars($band['contact_email'] ?? '') ?>">
                 </label>
                 <label>Tags
                     <input class="form-control" name="style_tags" value="<?= htmlspecialchars($band['style_tags']) ?>">

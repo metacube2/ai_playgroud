@@ -56,21 +56,18 @@ function register(array $data): array
         ':token' => $token,
         ':created' => (new DateTimeImmutable())->format('c'),
     ]);
-    $userId = (int) db()->lastInsertId();
 
     if ($data['role'] === 'band') {
-        $band = db()->prepare('INSERT INTO bands (user_id, name, city, genre, price, description, status, contact_email)
-            VALUES (:user_id, :name, :city, :genre, :price, :description, :status, :contact_email)');
-        $bandEmail = $data['band_email'] ?? $data['email'];
+        $band = db()->prepare('INSERT INTO bands (user_id, name, city, genre, price, description, status)
+            VALUES (:user_id, :name, :city, :genre, :price, :description, :status)');
         $band->execute([
-            ':user_id' => $userId,
+            ':user_id' => (int) db()->lastInsertId(),
             ':name' => $data['band_name'] ?? 'Neue Band',
             ':city' => $data['city'] ?? '',
             ':genre' => $data['genre'] ?? '',
             ':price' => 0,
             ':description' => 'Bitte Profil ergänzen.',
             ':status' => 'prüfung',
-            ':contact_email' => $bandEmail,
         ]);
     }
 

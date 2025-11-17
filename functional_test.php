@@ -3,14 +3,16 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/config.php';
-require_once __DIR__ . '/includes/functions.php';
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/email.php';
 
 $options = array_slice($argv, 1);
 if (in_array('--fresh', $options, true) && file_exists(DB_PATH)) {
     unlink(DB_PATH);
+    echo "Bestehende Datenbank entfernt – wird neu initialisiert.\n";
 }
+
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/email.php';
 
 if (!isset($_SERVER['REQUEST_METHOD'])) {
     $_SERVER['REQUEST_METHOD'] = 'GET';
@@ -254,14 +256,11 @@ $runner->run('Registrierung legt Band an', function (PDO $pdo) {
     if (!$userRow || $userRow['role'] !== 'band') {
         throw new RuntimeException('User wurde nicht gespeichert.');
     }
-    $band = $pdo->prepare('SELECT status, contact_email FROM bands WHERE user_id = :id');
+    $band = $pdo->prepare('SELECT status FROM bands WHERE user_id = :id');
     $band->execute([':id' => $userRow['id']]);
     $bandRow = $band->fetch(PDO::FETCH_ASSOC);
     if (!$bandRow || $bandRow['status'] !== 'prüfung') {
         throw new RuntimeException('Bandprofil wurde nicht angelegt.');
-    }
-    if (($bandRow['contact_email'] ?? '') !== $email) {
-        throw new RuntimeException('Kontakt-E-Mail der Band fehlt.');
     }
     return 'Token erstellt und Bandstatus "prüfung" bestätigt.';
 }, true);
@@ -280,30 +279,6 @@ $runner->run('Band-Detailseite rendert', function () {
         throw new RuntimeException('Band-Detailseite unvollständig.');
     }
     return 'HTML-Länge: ' . strlen($html) . ' Zeichen';
-});
-
-$runner->run('Kontaktformular der Bandseite', function () {
-    $logFile = __DIR__ . '/storage/logs/mail.log';
-    if (!is_dir(dirname($logFile))) {
-        mkdir(dirname($logFile), 0775, true);
-    }
-    $before = file_exists($logFile) ? filesize($logFile) : 0;
-    $html = renderPage('band-detail.php', ['id' => 1], [
-        'contact' => '1',
-        'contact_name' => 'QA Bot',
-        'contact_email' => 'qa@example.com',
-        'contact_message' => 'Testnachricht an die Band.',
-    ]);
-    $success = strpos($html, 'Nachricht an die Band wurde verschickt.') !== false;
-    $fallback = strpos($html, 'E-Mail-Versand zur Band nicht möglich.') !== false;
-    if (!$success && !$fallback) {
-        throw new RuntimeException('Kontaktformular meldete keinen Versandstatus.');
-    }
-    $after = filesize($logFile);
-    if ($after <= $before) {
-        throw new RuntimeException('Kein Mail-Logeintrag für Kontaktformular.');
-    }
-    return 'Kontaktformular meldete Erfolg und schrieb ins Log.';
 });
 
 $runner->run('Anfrageformular rendert', function () {

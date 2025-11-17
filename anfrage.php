@@ -30,20 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Bitte Datum und Ort ausfüllen.';
     } else {
         createRequest($data);
-        $recipient = $band['contact_email'] ?: SUPPORT_EMAIL;
-        $emailBody = sprintf(
-            '<p>Neue Anfrage für %s</p><ul><li>Datum: %s</li><li>Ort: %s</li><li>Budget: %s CHF</li><li>Event: %s</li></ul><p>Nachricht:</p><p>%s</p>',
-            htmlspecialchars($band['name']),
-            htmlspecialchars($data['event_date']),
-            htmlspecialchars($data['location']),
-            number_format((int) $data['budget'], 0, ',', '.'),
-            htmlspecialchars($data['event_type']),
-            nl2br(htmlspecialchars($data['message']))
-        );
-        $sent = sendEmail($recipient, 'Neue Anfrage – ' . $band['name'], $emailBody);
-        $message = $sent
-            ? 'Anfrage gespeichert und an die Band gemeldet.'
-            : 'Anfrage gespeichert – E-Mail an die Band konnte nicht gesendet werden.';
+        $message = 'Anfrage gespeichert und an die Band gemeldet.';
+        sendEmail('info@' . preg_replace('/\s+/', '', strtolower($band['name'])) . '.ch', 'Neue Anfrage', 'Neue Anfrage für ' . $band['name']);
     }
 }
 

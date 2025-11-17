@@ -21,20 +21,7 @@ function initializeDatabase(PDO $pdo): void
     $schema = file_get_contents(__DIR__ . '/../database.sql');
     $pdo->exec($schema);
 
-    ensureBandContactEmailColumn($pdo);
-
     seedData($pdo);
-}
-
-function ensureBandContactEmailColumn(PDO $pdo): void
-{
-    $columns = $pdo->query('PRAGMA table_info(bands)')->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($columns as $column) {
-        if (($column['name'] ?? '') === 'contact_email') {
-            return;
-        }
-    }
-    $pdo->exec('ALTER TABLE bands ADD COLUMN contact_email TEXT');
 }
 
 function seedData(PDO $pdo): void
@@ -91,7 +78,6 @@ function seedData(PDO $pdo): void
             'status' => 'aktiv',
             'style_tags' => 'Funk,Retro,Showband',
             'video_url' => 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-            'contact_email' => 'booking@neongroove.ch',
         ],
         [
             'user_id' => null,
@@ -103,12 +89,11 @@ function seedData(PDO $pdo): void
             'status' => 'aktiv',
             'style_tags' => 'Pop,Party,LED',
             'video_url' => 'https://www.youtube.com/embed/5NV6Rdv1a3I',
-            'contact_email' => 'hello@sonnenblitz.ch',
         ],
     ];
 
-    $bandStmt = $pdo->prepare('INSERT INTO bands (user_id, name, city, genre, price, description, status, style_tags, video_url, contact_email)
-        VALUES (:user_id, :name, :city, :genre, :price, :description, :status, :style_tags, :video_url, :contact_email)');
+    $bandStmt = $pdo->prepare('INSERT INTO bands (user_id, name, city, genre, price, description, status, style_tags, video_url)
+        VALUES (:user_id, :name, :city, :genre, :price, :description, :status, :style_tags, :video_url)');
 
     foreach ($bands as $band) {
         $bandStmt->execute([
@@ -121,7 +106,6 @@ function seedData(PDO $pdo): void
             ':status' => $band['status'],
             ':style_tags' => $band['style_tags'],
             ':video_url' => $band['video_url'],
-            ':contact_email' => $band['contact_email'],
         ]);
         $bandId = (int) $pdo->lastInsertId();
 

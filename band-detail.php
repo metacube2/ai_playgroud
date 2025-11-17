@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/email.php';
 
 $bandId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 $band = $bandId ? findBand($bandId) : null;
@@ -16,24 +15,17 @@ $media = bandMedia($bandId);
 $availability = bandAvailability($bandId);
 $reviews = bandReviews($bandId);
 $user = currentUser();
-$reviewMessage = '';
-$reviewError = '';
-$contactMessage = '';
-$contactError = '';
-$contactForm = [
-    'name' => '',
-    'email' => '',
-    'message' => '',
-];
+$message = '';
+$error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['review']) && $user) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user) {
+    if (isset($_POST['review'])) {
         if (!eligibleForReview($bandId, (int) $user['id'])) {
-            $reviewError = 'Für Bewertungen ist eine bestätigte Buchung nötig.';
+            $error = 'Für Bewertungen ist eine bestätigte Buchung nötig.';
         } else {
             $comment = trim((string) ($_POST['comment'] ?? ''));
             if (mb_strlen($comment) > 200) {
-                $reviewError = 'Maximal 200 Zeichen erlaubt.';
+                $error = 'Maximal 200 Zeichen erlaubt.';
             } else {
                 storeReview([
                     'band_id' => $bandId,
@@ -41,35 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'rating' => (int) $_POST['rating'],
                     'comment' => $comment,
                 ]);
-                $reviewMessage = 'Danke! Deine Bewertung wartet auf Freigabe.';
-            }
-        }
-    }
-
-    if (isset($_POST['contact'])) {
-        $contactForm['name'] = trim((string) ($_POST['contact_name'] ?? ''));
-        $contactForm['email'] = trim((string) ($_POST['contact_email'] ?? ''));
-        $contactForm['message'] = trim((string) ($_POST['contact_message'] ?? ''));
-
-        if ($contactForm['name'] === '' || $contactForm['message'] === '') {
-            $contactError = 'Bitte Name und Nachricht ausfüllen.';
-        } elseif (!filter_var($contactForm['email'], FILTER_VALIDATE_EMAIL)) {
-            $contactError = 'Bitte eine gültige E-Mail-Adresse angeben.';
-        } else {
-            $recipient = $band['contact_email'] ?: SUPPORT_EMAIL;
-            $body = sprintf(
-                '<p>Neue Nachricht über die Bandseite %s.</p><p><strong>Von:</strong> %s (%s)</p><p><strong>Nachricht:</strong><br>%s</p>',
-                htmlspecialchars($band['name']),
-                htmlspecialchars($contactForm['name']),
-                htmlspecialchars($contactForm['email']),
-                nl2br(htmlspecialchars($contactForm['message']))
-            );
-            $sent = sendEmail($recipient, 'Kontaktformular – ' . $band['name'], $body);
-            if ($sent) {
-                $contactMessage = 'Nachricht an die Band wurde verschickt.';
-                $contactForm = ['name' => '', 'email' => '', 'message' => ''];
-            } else {
-                $contactError = 'E-Mail-Versand zur Band nicht möglich. Bitte später erneut versuchen.';
+                $message = 'Danke! Deine Bewertung wartet auf Freigabe.';
             }
         }
     }
@@ -140,29 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </section>
 
         <section style="margin-top: 40px;">
-            <h3>Kontakt zur Band</h3>
-            <p>Schicke <?= htmlspecialchars($band['name']) ?> eine direkte Nachricht.</p>
-            <?php if ($contactMessage): ?><div class="alert alert-success"><?= htmlspecialchars($contactMessage) ?></div><?php endif; ?>
-            <?php if ($contactError): ?><div class="alert alert-error"><?= htmlspecialchars($contactError) ?></div><?php endif; ?>
-            <form method="post">
-                <input type="hidden" name="contact" value="1">
-                <label>Dein Name
-                    <input class="form-control" name="contact_name" value="<?= htmlspecialchars($contactForm['name']) ?>" required>
-                </label>
-                <label>Deine E-Mail
-                    <input class="form-control" type="email" name="contact_email" value="<?= htmlspecialchars($contactForm['email']) ?>" required>
-                </label>
-                <label>Nachricht
-                    <textarea class="form-control" name="contact_message" rows="4" required><?= htmlspecialchars($contactForm['message']) ?></textarea>
-                </label>
-                <button class="btn-primary">Nachricht senden</button>
-            </form>
-        </section>
-
-        <section style="margin-top: 40px;">
             <h3>Bewertungen</h3>
-            <?php if ($reviewMessage): ?><div class="alert alert-success"><?= htmlspecialchars($reviewMessage) ?></div><?php endif; ?>
-            <?php if ($reviewError): ?><div class="alert alert-error"><?= htmlspecialchars($reviewError) ?></div><?php endif; ?>
+            <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
+            <?php if ($error): ?><div class="alert alert-error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
             <?php foreach ($reviews as $review): ?>
                 <article class="band-card">
                     <p><strong><?= htmlspecialchars($review['author']) ?></strong> – <?= (int) $review['rating'] ?> ★</p>

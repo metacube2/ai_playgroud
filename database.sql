@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS bands (
     status TEXT NOT NULL DEFAULT 'prüfung',
     style_tags TEXT,
     video_url TEXT,
-    contact_email TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id)
 );

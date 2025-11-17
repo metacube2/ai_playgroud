@@ -37,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'city' => trim((string) $_POST['city']),
                 'band_name' => $_POST['band_name'] ?? null,
                 'genre' => $_POST['genre'] ?? null,
-                'band_email' => $_POST['band_email'] ?? null,
             ]);
             $verificationLink = BASE_URL . '/verify-email.php?token=' . urlencode($result['token']);
             sendEmail($_POST['email'], 'E-Mail bestätigen', 'Bitte bestätige dein Konto: ' . $verificationLink);
@@ -97,9 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </label>
                     <label>Bandname (falls Band)
                         <input class="form-control" type="text" name="band_name">
-                    </label>
-                    <label>Band Kontakt-E-Mail
-                        <input class="form-control" type="email" name="band_email" placeholder="booking@deineband.ch">
                     </label>
                     <label>Genre
                         <input class="form-control" type="text" name="genre">
