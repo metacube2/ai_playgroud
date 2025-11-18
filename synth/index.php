@@ -12,6 +12,8 @@ try {
         if (isset($payload['chartName'])) {
             $btcChange = $payload['chartName'];
         }
+
+        
     }
 } catch (Throwable $e) {
     // Silently ignore network failures, we degrade gracefully in the UI.
