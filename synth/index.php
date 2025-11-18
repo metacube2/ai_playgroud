@@ -18,6 +18,7 @@ try {
     // Silently ignore network failures, we degrade gracefully in the UI.
 }
 
+
 $btcLabel = $btcPrice ? number_format($btcPrice, 2) . ' $' : 'unbekannt';
 ?>
 <!DOCTYPE html>
