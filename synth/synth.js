@@ -1,27 +1,15 @@
 const btcPrice = parseFloat(document.body.dataset.btcPrice || 'NaN');
-const btcCmcPrice = parseFloat(document.body.dataset.btcCmcPrice || 'NaN');
-const coinPool = [btcPrice, btcCmcPrice].filter((value) => Number.isFinite(value));
-const normalizedCoin = coinPool.length
-  ? coinPool
-      .map((value) => Math.min(Math.max((value - 14000) / 28000, 0), 1))
-      .reduce((acc, value) => acc + value, 0) / coinPool.length
+const normalizedCoin = Number.isFinite(btcPrice)
+  ? Math.min(Math.max((btcPrice - 15000) / 25000, 0), 1)
   : 0.5;
 
 const pad = document.getElementById('synth-pad');
 const indicator = document.getElementById('pad-indicator');
-const instrumentSelect = document.getElementById('instrument');
 const fmDepthInput = document.getElementById('fm-depth');
 const lfoSpeedInput = document.getElementById('lfo-speed');
 const textureInput = document.getElementById('texture');
-const noiseInput = document.getElementById('noise-level');
-const delayMixInput = document.getElementById('delay-mix');
-const reverbInput = document.getElementById('reverb-mix');
-const clockReactivityInput = document.getElementById('clock-reactivity');
-const coinReactivityInput = document.getElementById('coin-reactivity');
-const driveInput = document.getElementById('drive');
 const startBtn = document.getElementById('start-btn');
 const randomizeBtn = document.getElementById('randomize-btn');
-const clockInfo = document.getElementById('clock-info');
 
 class MouseSynth {
   constructor(options = {}) {
@@ -30,10 +18,6 @@ class MouseSynth {
     this.started = false;
 
     this.coinBlend = options.coinBlend ?? 0.5;
-    this.clockDepth = options.clockDepth ?? 0.5;
-    this.driveCeiling = options.driveCeiling ?? 0.35;
-    this.instrument = 'supersaw';
-    this.instrumentNoiseScale = 1;
 
     this.setupNodes();
     this.#bindEvents();
@@ -44,15 +28,6 @@ class MouseSynth {
 
     this.masterGain = ctx.createGain();
     this.masterGain.gain.value = 0.0;
-
-    this.compressor = ctx.createDynamicsCompressor();
-    this.compressor.threshold.value = -8;
-    this.compressor.knee.value = 12;
-    this.compressor.ratio.value = 12;
-    this.compressor.attack.value = 0.004;
-    this.compressor.release.value = 0.25;
-
-    this.panner = ctx.createStereoPanner();
 
     this.carrier = ctx.createOscillator();
     this.carrier.type = 'sawtooth';
@@ -108,11 +83,6 @@ class MouseSynth {
     this.reverbGain = ctx.createGain();
     this.reverbGain.gain.value = 0.25;
 
-    this.dryGain = ctx.createGain();
-    this.dryGain.gain.value = 1 - (delayMixInput ? parseFloat(delayMixInput.value) : 0.6);
-    this.delayWet = ctx.createGain();
-    this.delayWet.gain.value = delayMixInput ? parseFloat(delayMixInput.value) : 0.6;
-
     // Connections
     this.fmOsc.connect(this.fmGain).connect(this.carrier.frequency);
     this.harmonic.connect(this.filter);
@@ -124,15 +94,17 @@ class MouseSynth {
     this.filter.connect(this.distortion);
     this.noise.connect(this.noiseGain).connect(this.filter);
 
-    this.distortion.connect(this.dryGain).connect(this.masterGain);
+    const wet = ctx.createGain();
+    const dry = ctx.createGain();
+    this.distortion.connect(dry).connect(this.masterGain);
     this.distortion.connect(this.delay);
     this.delay.connect(this.feedback).connect(this.delay);
     this.delay.connect(this.coinMorph);
-    this.coinMorph.connect(this.delayWet);
-    this.delayWet.connect(this.reverb);
+    this.coinMorph.connect(wet);
+    wet.connect(this.reverb);
     this.reverb.connect(this.reverbGain).connect(this.masterGain);
 
-    this.masterGain.connect(this.panner).connect(this.compressor).connect(ctx.destination);
+    this.masterGain.connect(ctx.destination);
 
     this.carrier.start();
     this.harmonic.start();
@@ -146,18 +118,11 @@ class MouseSynth {
   async start() {
     if (this.started) return;
     await this.ctx.resume();
-    this.masterGain.gain.linearRampToValueAtTime(0.65, this.ctx.currentTime + 0.5);
+    this.masterGain.gain.linearRampToValueAtTime(0.8, this.ctx.currentTime + 0.5);
     this.started = true;
-    this.tickClock();
   }
 
   #bindEvents() {
-    if (instrumentSelect) {
-      instrumentSelect.addEventListener('change', () => {
-        this.setInstrument(instrumentSelect.value);
-      });
-    }
-
     fmDepthInput.addEventListener('input', () => {
       this.fmGain.gain.setTargetAtTime(parseFloat(fmDepthInput.value), this.ctx.currentTime, 0.05);
     });
@@ -169,31 +134,6 @@ class MouseSynth {
     });
 
     textureInput.addEventListener('input', () => {
-      this.#updateTexture(parseFloat(textureInput.value));
-    });
-
-    noiseInput.addEventListener('input', () => {
-      this.setNoiseLevel(parseFloat(noiseInput.value));
-    });
-
-    delayMixInput.addEventListener('input', () => {
-      this.setDelayMix(parseFloat(delayMixInput.value));
-    });
-
-    reverbInput.addEventListener('input', () => {
-      this.setReverbMix(parseFloat(reverbInput.value));
-    });
-
-    clockReactivityInput.addEventListener('input', () => {
-      this.setClockDepth(parseFloat(clockReactivityInput.value));
-    });
-
-    coinReactivityInput.addEventListener('input', () => {
-      this.setCoinBlend(parseFloat(coinReactivityInput.value));
-    });
-
-    driveInput.addEventListener('input', () => {
-      this.setDriveCeiling(parseFloat(driveInput.value));
       this.#updateTexture(parseFloat(textureInput.value));
     });
 
@@ -219,7 +159,6 @@ class MouseSynth {
     this.coinMorph.gain.setTargetAtTime(this.coinBlend * (0.4 + y * 0.6), this.ctx.currentTime, 0.3);
     this.fmGain.gain.setTargetAtTime(parseFloat(fmDepthInput.value) + x * 200, this.ctx.currentTime, 0.05);
     this.#updateTexture(textureInput.value, x, y);
-    this.tickClock();
   }
 
   handlePointerLeave() {
@@ -229,11 +168,6 @@ class MouseSynth {
   }
 
   randomize() {
-    const instruments = Array.from(instrumentSelect.options).map((option) => option.value);
-    const instrument = instruments[Math.floor(Math.random() * instruments.length)];
-    instrumentSelect.value = instrument;
-    this.setInstrument(instrument);
-
     const fm = 80 + Math.random() * 720;
     fmDepthInput.value = fm.toFixed(0);
     this.fmGain.gain.setTargetAtTime(fm, this.ctx.currentTime, 0.1);
@@ -246,41 +180,15 @@ class MouseSynth {
     const texture = Math.random();
     textureInput.value = texture.toFixed(2);
     this.#updateTexture(texture);
-
-    const noise = Math.random();
-    noiseInput.value = noise.toFixed(2);
-    this.setNoiseLevel(noise);
-
-    const delayMix = Math.random();
-    delayMixInput.value = delayMix.toFixed(2);
-    this.setDelayMix(delayMix);
-
-    const reverbMix = Math.random();
-    reverbInput.value = reverbMix.toFixed(2);
-    this.setReverbMix(reverbMix);
-
-    const clockDepth = Math.random();
-    clockReactivityInput.value = clockDepth.toFixed(2);
-    this.setClockDepth(clockDepth);
-
-    const coinDepth = Math.random();
-    coinReactivityInput.value = coinDepth.toFixed(2);
-    this.setCoinBlend(coinDepth);
-
-    const drive = Math.random();
-    driveInput.value = drive.toFixed(2);
-    this.setDriveCeiling(drive);
-    this.#updateTexture(texture);
   }
 
   #updateTexture(value, x = 0.5, y = 0.5) {
     const amount = parseFloat(value);
     const drive = 150 + amount * 850 + this.coinBlend * 400;
-    const driveLimit = 150 + this.driveCeiling * 700;
-    this.#setDrive(Math.min(drive, driveLimit));
+    this.#setDrive(drive);
     const morph = amount * (0.6 + this.coinBlend * 0.8);
     this.distortion.oversample = morph > 0.5 ? '4x' : '2x';
-    this.reverbGain.gain.setTargetAtTime(0.1 + morph * 0.5, this.ctx.currentTime, 0.3);
+    this.reverbGain.gain.setTargetAtTime(0.15 + morph * 0.6, this.ctx.currentTime, 0.3);
     const filterType = morph > 0.7 ? 'notch' : morph > 0.35 ? 'bandpass' : 'lowpass';
     this.filter.type = filterType;
     this.coinMorph.gain.setTargetAtTime(this.coinBlend * (0.4 + morph), this.ctx.currentTime, 0.3);
@@ -320,103 +228,9 @@ class MouseSynth {
     }
     return impulse;
   }
-
-  setInstrument(mode) {
-    this.instrument = mode;
-    switch (mode) {
-      case 'fm-bell':
-        this.carrier.type = 'sine';
-        this.harmonic.type = 'sine';
-        this.harmonic.detune.setTargetAtTime(1200, this.ctx.currentTime, 0.2);
-        this.filter.Q.setTargetAtTime(14, this.ctx.currentTime, 0.2);
-        this.filter.type = 'bandpass';
-        this.instrumentNoiseScale = 0.2;
-        break;
-      case 'pulse-pluck':
-        this.carrier.type = 'square';
-        this.harmonic.type = 'square';
-        this.harmonic.detune.setTargetAtTime(305, this.ctx.currentTime, 0.2);
-        this.filter.type = 'lowpass';
-        this.filter.Q.setTargetAtTime(6, this.ctx.currentTime, 0.2);
-        this.instrumentNoiseScale = 0.6;
-        break;
-      default:
-        this.carrier.type = 'sawtooth';
-        this.harmonic.type = 'triangle';
-        this.harmonic.detune.setTargetAtTime(702, this.ctx.currentTime, 0.2);
-        this.filter.type = 'bandpass';
-        this.filter.Q.setTargetAtTime(10, this.ctx.currentTime, 0.2);
-        this.instrumentNoiseScale = 1;
-    }
-    this.setNoiseLevel(parseFloat(noiseInput.value));
-  }
-
-  setNoiseLevel(amount) {
-    const scale = this.instrumentNoiseScale ?? 1;
-    this.noiseGain.gain.setTargetAtTime(amount * 0.6 * scale, this.ctx.currentTime, 0.1);
-  }
-
-  setDelayMix(amount) {
-    this.dryGain.gain.setTargetAtTime(Math.max(0.05, 1 - amount), this.ctx.currentTime, 0.2);
-    this.delayWet.gain.setTargetAtTime(amount, this.ctx.currentTime, 0.2);
-  }
-
-  setReverbMix(amount) {
-    this.reverbGain.gain.setTargetAtTime(0.05 + amount * 0.7, this.ctx.currentTime, 0.2);
-  }
-
-  setCoinBlend(amount) {
-    this.coinBlend = amount;
-    this.coinMorph.gain.setTargetAtTime(amount * 0.8, this.ctx.currentTime, 0.2);
-  }
-
-  setClockDepth(amount) {
-    this.clockDepth = amount;
-    this.tickClock();
-  }
-
-  setDriveCeiling(amount) {
-    this.driveCeiling = amount;
-  }
-
-  tickClock() {
-    const now = new Date();
-    const hourFactor = now.getHours() / 23 || 0;
-    const secondFactor = now.getSeconds() / 59 || 0;
-    const milliFactor = now.getMilliseconds() / 999 || 0;
-    const depth = this.clockDepth;
-    const detune = (hourFactor - 0.5) * 600 * depth;
-    this.filter.detune.setTargetAtTime(detune, this.ctx.currentTime, 0.4);
-    this.harmonic.detune.setTargetAtTime(702 + detune * 0.4, this.ctx.currentTime, 0.4);
-    const pan = (secondFactor - 0.5) * 1.8 * depth;
-    this.panner.pan.setTargetAtTime(pan, this.ctx.currentTime, 0.3);
-    const ampMod = 0.2 + hourFactor * 0.7 * depth;
-    this.ampLfoGain.gain.setTargetAtTime(ampMod, this.ctx.currentTime, 0.3);
-    const shRate = 2 + milliFactor * 14 * depth;
-    this.sampleHold.frequency.setTargetAtTime(shRate, this.ctx.currentTime, 0.2);
-  }
 }
 
-const synth = new MouseSynth({
-  coinBlend: normalizedCoin,
-  clockDepth: parseFloat(clockReactivityInput.value),
-  driveCeiling: parseFloat(driveInput.value),
-});
-
-coinReactivityInput.value = normalizedCoin.toFixed(2);
-synth.setCoinBlend(normalizedCoin);
-if (instrumentSelect) {
-  synth.setInstrument(instrumentSelect.value);
-}
-if (noiseInput) {
-  synth.setNoiseLevel(parseFloat(noiseInput.value));
-}
-if (delayMixInput) {
-  synth.setDelayMix(parseFloat(delayMixInput.value));
-}
-if (reverbInput) {
-  synth.setReverbMix(parseFloat(reverbInput.value));
-}
+const synth = new MouseSynth({ coinBlend: normalizedCoin });
 
 startBtn.addEventListener('click', () => synth.start());
 
@@ -439,22 +253,10 @@ pad.addEventListener('pointerup', (event) => {
 
 pad.addEventListener('pointerleave', () => synth.handlePointerLeave());
 
-function updateClockStatus() {
-  const now = new Date();
-  const formatted = now.toLocaleTimeString('de-DE', { hour12: false });
-  if (clockInfo) {
-    clockInfo.innerHTML = `Lokale Zeit: <span>${formatted}.${now.getMilliseconds().toString().padStart(3, '0')}</span>`;
-  }
-  synth.tickClock();
-}
-
-setInterval(updateClockStatus, 1000);
-updateClockStatus();
-
-if (!coinPool.length) {
+if (!Number.isFinite(btcPrice)) {
   const status = document.getElementById('btc-status');
   if (status) {
-    status.insertAdjacentHTML('beforeend', '<div style="color:#ffa3a3;">BTC Feeds nicht erreichbar – Synth läuft im Fantasy-Modus.</div>');
+    status.insertAdjacentHTML('beforeend', '<div style="color:#ffa3a3;">BTC Feed nicht erreichbar – Synth läuft im Fantasy-Modus.</div>');
   }
 }
 

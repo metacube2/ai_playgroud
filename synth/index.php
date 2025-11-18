@@ -1,33 +1,22 @@
 <?php
-$btcCoindeskPrice = null;
-$btcCoinmarketcapPrice = null;
+$btcPrice = null;
+$btcChange = null;
 $btcSource = 'https://api.coindesk.com/v1/bpi/currentprice/USD.json';
-$btcCmcSource = 'https://api.coinmarketcap.com/v1/ticker/bitcoin/?convert=USD';
-
-$fetchJson = static function (string $url) {
-    try {
-        $response = @file_get_contents($url);
-        if ($response !== false) {
-            return json_decode($response, true);
+try {
+    $response = @file_get_contents($btcSource);
+    if ($response !== false) {
+        $payload = json_decode($response, true);
+        if (isset($payload['bpi']['USD']['rate_float'])) {
+            $btcPrice = (float) $payload['bpi']['USD']['rate_float'];
         }
-    } catch (Throwable $e) {
-        // Ignore network failures – we fall back to fantasy values.
+        if (isset($payload['chartName'])) {
+            $btcChange = $payload['chartName'];
+        }
     }
-    return null;
-};
-
-$coindeskPayload = $fetchJson($btcSource);
-if (isset($coindeskPayload['bpi']['USD']['rate_float'])) {
-    $btcCoindeskPrice = (float) $coindeskPayload['bpi']['USD']['rate_float'];
+} catch (Throwable $e) {
+    // Silently ignore network failures, we degrade gracefully in the UI.
 }
-
-$coinmarketcapPayload = $fetchJson($btcCmcSource);
-if (is_array($coinmarketcapPayload) && isset($coinmarketcapPayload[0]['price_usd'])) {
-    $btcCoinmarketcapPrice = (float) $coinmarketcapPayload[0]['price_usd'];
-}
-
-$btcLabel = $btcCoindeskPrice ? number_format($btcCoindeskPrice, 2) . ' $' : 'unbekannt';
-$btcCmcLabel = $btcCoinmarketcapPrice ? number_format($btcCoinmarketcapPrice, 2) . ' $' : 'unbekannt';
+$btcLabel = $btcPrice ? number_format($btcPrice, 2) . ' $' : 'unbekannt';
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -102,7 +91,7 @@ $btcCmcLabel = $btcCoinmarketcapPrice ? number_format($btcCoinmarketcapPrice, 2)
         }
         .controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1rem;
             margin-top: 1.5rem;
         }
@@ -143,42 +132,22 @@ $btcCmcLabel = $btcCoinmarketcapPrice ? number_format($btcCoinmarketcapPrice, 2)
             font-weight: 600;
             color: #7fffd4;
         }
-        select,
-        option {
-            font-size: 1rem;
-            border-radius: 999px;
-            padding: 0.4rem 0.75rem;
-            border: 1px solid rgba(255,255,255,0.15);
-            background: rgba(5, 6, 8, 0.4);
-            color: inherit;
-        }
     </style>
 </head>
-<body data-btc-price="<?= htmlspecialchars((string) ($btcCoindeskPrice ?? '')) ?>" data-btc-cmc-price="<?= htmlspecialchars((string) ($btcCoinmarketcapPrice ?? '')) ?>">
+<body data-btc-price="<?= htmlspecialchars((string) ($btcPrice ?? '')) ?>">
     <div class="panel">
         <h1>Mouse Synth Lab</h1>
         <p>
             Zieh deine Maus durch den Pad und verwandle Bewegungen in Klang. Drei LFOs,
             FM-Experimente und ein Delay/Distortion-Hybrid werden live verschaltet.
-            Die Bitcoin-Feeds von Coindesk (<strong><?= htmlspecialchars($btcLabel) ?></strong>)
-            und CoinMarketCap (<strong><?= htmlspecialchars($btcCmcLabel) ?></strong>)
-            mischen das Routing zusätzlich – sogar die Uhrzeit entscheidet, welches Instrument
-            sich meldet und wie die Resonanzen pulsieren.
+            Der aktuelle Bitcoin-Kurs (<strong><?= htmlspecialchars($btcLabel) ?></strong>)
+            steuert, wie aggressiv der Mix moduliert und rückgekoppelt wird.
         </p>
         <div class="status" id="btc-status">
-            <div>Coindesk: <span><?= htmlspecialchars($btcLabel) ?></span></div>
-            <div>CoinMarketCap: <span><?= htmlspecialchars($btcCmcLabel) ?></span></div>
-            <div id="clock-info">Lokale Zeit: <span>---</span></div>
+            <div>Bitcoin Quelle: <span><?= htmlspecialchars($btcSource) ?></span></div>
+            <div>Letzter Wert: <span><?= htmlspecialchars($btcLabel) ?></span></div>
         </div>
         <div class="controls">
-            <div>
-                <label for="instrument">Instrument</label>
-                <select id="instrument">
-                    <option value="supersaw">Supersaw Orbit</option>
-                    <option value="fm-bell">FM Bell</option>
-                    <option value="pulse-pluck">Pulse Pluck</option>
-                </select>
-            </div>
             <div>
                 <label for="fm-depth">FM-Intensität</label>
                 <input id="fm-depth" type="range" min="10" max="800" value="320">
@@ -191,30 +160,6 @@ $btcCmcLabel = $btcCoinmarketcapPrice ? number_format($btcCoinmarketcapPrice, 2)
                 <label for="texture">Texture Morph</label>
                 <input id="texture" type="range" min="0" max="1" step="0.01" value="0.4">
             </div>
-            <div>
-                <label for="noise-level">Noise Lift</label>
-                <input id="noise-level" type="range" min="0" max="1" step="0.01" value="0.2">
-            </div>
-            <div>
-                <label for="delay-mix">Delay Mix</label>
-                <input id="delay-mix" type="range" min="0" max="1" step="0.01" value="0.6">
-            </div>
-            <div>
-                <label for="reverb-mix">Reverb Mix</label>
-                <input id="reverb-mix" type="range" min="0" max="1" step="0.01" value="0.35">
-            </div>
-            <div>
-                <label for="clock-reactivity">Zeit-Reaktivität</label>
-                <input id="clock-reactivity" type="range" min="0" max="1" step="0.01" value="0.5">
-            </div>
-            <div>
-                <label for="coin-reactivity">BTC Morph</label>
-                <input id="coin-reactivity" type="range" min="0" max="1" step="0.01" value="0.5">
-            </div>
-            <div>
-                <label for="drive">Drive Ceiling</label>
-                <input id="drive" type="range" min="0" max="1" step="0.01" value="0.35">
-            </div>
             <div style="display:flex;align-items:end;gap:0.75rem;">
                 <button id="start-btn">Synth starten</button>
                 <button id="randomize-btn" type="button">Chaos Patch</button>
@@ -225,8 +170,7 @@ $btcCmcLabel = $btcCoinmarketcapPrice ? number_format($btcCoinmarketcapPrice, 2)
         </div>
         <p style="font-size:0.9rem;color:rgba(255,255,255,0.65);margin-top:1.5rem;">
             Tipp: Halte die Maus gedrückt, damit der AudioContext aktiv bleibt, und lass den Cursor
-            Kreise fahren. Je nach Bitcoin-Laune (Coindesk + CoinMarketCap) und Tageszeit schalten
-            sich neue Instrumente, Delays und Resonanzen zu.
+            Kreise fahren. Je nach Bitcoin-Laune schalten sich neue Rückkopplungen zu.
         </p>
     </div>
     <script src="synth.js" type="module"></script>
