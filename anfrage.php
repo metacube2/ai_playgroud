@@ -26,12 +26,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'message' => trim((string) $_POST['message'] ?? ''),
     ];
 
+    $guestName = trim($_POST['guest_name'] ?? '');
+    $guestEmail = trim($_POST['guest_email'] ?? '');
+
     if (!$data['event_date'] || !$data['location']) {
         $error = 'Bitte Datum und Ort ausfüllen.';
+    } elseif (!$user && (!$guestName || !$guestEmail)) {
+        $error = 'Bitte geben Sie Ihren Namen und Email-Adresse an.';
+    } elseif (!$user && !filter_var($guestEmail, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Bitte geben Sie eine gültige Email-Adresse an.';
     } else {
         createRequest($data);
-        $message = 'Anfrage gespeichert und an die Band gemeldet.';
-        sendEmail('info@' . preg_replace('/\s+/', '', strtolower($band['name'])) . '.ch', 'Neue Anfrage', 'Neue Anfrage für ' . $band['name']);
+
+        $customer = $user;
+        if (!$user && $guestName && $guestEmail) {
+            $customer = ['name' => $guestName, 'email' => $guestEmail];
+        }
+
+        sendBookingRequestEmail($band, $data, $customer);
+
+        $confirmEmail = $user['email'] ?? $guestEmail ?? null;
+        if ($confirmEmail) {
+            sendBookingConfirmationEmail($confirmEmail, $band, $data);
+        }
+
+        $message = 'Anfrage erfolgreich gesendet! Die Band wurde benachrichtigt und wird sich bei Ihnen melden.';
     }
 }
 
@@ -55,20 +74,34 @@ $settings = settings();
         <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
         <form method="post">
-            <label>Event-Datum
-                <input type="date" class="form-control" name="event_date" required>
+            <?php if (!$user): ?>
+                <div style="background: #fff3cd; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                    <strong>Gast-Buchung</strong>
+                    <p style="margin: 5px 0 0 0; font-size: 14px;">Sie sind nicht eingeloggt. Bitte geben Sie Ihre Kontaktdaten an.</p>
+                </div>
+                <label>Ihr Name *
+                    <input type="text" class="form-control" name="guest_name" required>
+                </label>
+                <label>Ihre Email *
+                    <input type="email" class="form-control" name="guest_email" required>
+                </label>
+                <hr style="margin: 20px 0;">
+            <?php endif; ?>
+
+            <label>Event-Datum *
+                <input type="date" class="form-control" name="event_date" min="<?= date('Y-m-d') ?>" required>
             </label>
-            <label>Ort / Location
+            <label>Ort / Location *
                 <input type="text" class="form-control" name="location" placeholder="Zürich, Kaufleuten" required>
             </label>
             <label>Event-Typ
-                <input type="text" class="form-control" name="event_type" placeholder="Hochzeit, Firmenfeier">
+                <input type="text" class="form-control" name="event_type" placeholder="Hochzeit, Firmenfeier, Geburtstag">
             </label>
             <label>Budget (CHF)
-                <input type="number" class="form-control" name="budget" placeholder="4500">
+                <input type="number" class="form-control" name="budget" placeholder="4500" min="0">
             </label>
-            <label>Nachricht
-                <textarea class="form-control" name="message" rows="4"></textarea>
+            <label>Nachricht / Besondere Wünsche
+                <textarea class="form-control" name="message" rows="4" placeholder="Erzählen Sie uns mehr über Ihr Event..."></textarea>
             </label>
             <button class="btn-primary">Anfrage senden</button>
         </form>

@@ -13,9 +13,10 @@ if ($user['role'] === 'band') {
     $band = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $stmt = db()->prepare('UPDATE bands SET name = :name, city = :city, genre = :genre, price = :price, description = :description, style_tags = :tags WHERE id = :id');
+        $stmt = db()->prepare('UPDATE bands SET name = :name, email = :email, city = :city, genre = :genre, price = :price, description = :description, style_tags = :tags WHERE id = :id');
         $stmt->execute([
             ':name' => $_POST['name'],
+            ':email' => $_POST['email'] ?? null,
             ':city' => $_POST['city'],
             ':genre' => $_POST['genre'],
             ':price' => (int) $_POST['price'],
@@ -47,7 +48,11 @@ if ($user['role'] === 'band') {
             <h2>Bandprofil</h2>
             <form method="post">
                 <label>Bandname
-                    <input class="form-control" name="name" value="<?= htmlspecialchars($band['name']) ?>">
+                    <input class="form-control" name="name" value="<?= htmlspecialchars($band['name']) ?>" required>
+                </label>
+                <label>Email für Buchungsanfragen
+                    <input class="form-control" type="email" name="email" value="<?= htmlspecialchars($band['email'] ?? '') ?>" placeholder="band@example.ch">
+                    <small>An diese Adresse werden Buchungsanfragen gesendet</small>
                 </label>
                 <label>Ort
                     <input class="form-control" name="city" value="<?= htmlspecialchars($band['city']) ?>">

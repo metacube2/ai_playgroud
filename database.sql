@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS bands (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     name TEXT NOT NULL,
+    email TEXT,
     city TEXT,
     genre TEXT,
     price INTEGER DEFAULT 0,
