@@ -1,0 +1,20 @@
+# Bitcoin Trading Signal System - Python Dependencies
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# HTTP Requests
+requests>=2.31.0
+
+# Optional: Enhanced Sentiment Analysis
+# textblob>=0.17.0
+# vaderSentiment>=3.3.2
+
+# Optional: Advanced Technical Analysis
+# ta>=0.11.0
+# pandas-ta>=0.3.14b0
+
+# Development/Testing (optional)
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
