@@ -1,2 +1,41 @@
+# Environment
+.env
+.env.local
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Build assets
+/public/dist/
+/public/hot
+
+# Storage
 storage/*
 !storage/.gitkeep
+storage/cache/*
+storage/logs/*
+storage/sessions/*
+storage/uploads/*
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Composer
+composer.lock
+
+# NPM
+package-lock.json
+yarn.lock
+
+# Testing
+.phpunit.result.cache
