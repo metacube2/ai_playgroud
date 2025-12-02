@@ -1,0 +1,38 @@
+-- Migration: Create bands table
+-- Created: 2025-12-02
+
+CREATE TABLE IF NOT EXISTS bands (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    genre VARCHAR(100),
+    location VARCHAR(255),
+    postal_code VARCHAR(10),
+    price_min DECIMAL(10, 2),
+    price_max DECIMAL(10, 2),
+    member_count INT,
+    phone VARCHAR(50),
+    website VARCHAR(255),
+    facebook VARCHAR(255),
+    instagram VARCHAR(255),
+    youtube VARCHAR(255),
+    profile_image VARCHAR(255),
+    cover_image VARCHAR(255),
+    is_approved BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    view_count INT DEFAULT 0,
+    average_rating DECIMAL(3, 2) DEFAULT 0.00,
+    total_reviews INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_slug (slug),
+    INDEX idx_genre (genre),
+    INDEX idx_location (location),
+    INDEX idx_postal_code (postal_code),
+    INDEX idx_is_approved (is_approved),
+    INDEX idx_average_rating (average_rating),
+    FULLTEXT idx_search (name, description, genre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

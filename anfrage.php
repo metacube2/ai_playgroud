@@ -15,6 +15,8 @@ $user = currentUser();
 $message = '';
 $error = '';
 
+$requestId = null;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = [
         'band_id' => $bandId,
@@ -37,20 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Bitte geben Sie eine gültige Email-Adresse an.';
     } else {
         createRequest($data);
-
-        $customer = $user;
-        if (!$user && $guestName && $guestEmail) {
-            $customer = ['name' => $guestName, 'email' => $guestEmail];
-        }
-
-        sendBookingRequestEmail($band, $data, $customer);
-
-        $confirmEmail = $user['email'] ?? $guestEmail ?? null;
-        if ($confirmEmail) {
-            sendBookingConfirmationEmail($confirmEmail, $band, $data);
-        }
-
-        $message = 'Anfrage erfolgreich gesendet! Die Band wurde benachrichtigt und wird sich bei Ihnen melden.';
+        $requestId = (int) db()->lastInsertId();
+        $message = 'Anfrage gespeichert und an die Band gemeldet.';
+        sendEmail('info@' . preg_replace('/\s+/', '', strtolower($band['name'])) . '.ch', 'Neue Anfrage', 'Neue Anfrage für ' . $band['name']);
     }
 }
 
@@ -71,8 +62,21 @@ $settings = settings();
         <p>PayPal Zahlungsabwicklung ist <?= $settings['paypal_enabled'] === '1' ? 'aktiviert' : 'optional' ?>, Service Fee: <?= htmlspecialchars($settings['service_fee']) ?>%.</p>
     </header>
     <main>
-        <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
+        <?php if ($message): ?>
+            <div class="alert alert-success">
+                <?= htmlspecialchars($message) ?>
+                <?php if ($requestId && $settings['paypal_enabled'] === '1'): ?>
+                    <div style="margin-top: 1rem;">
+                        <a href="paypal-checkout.php?request_id=<?= $requestId ?>" class="btn-primary" style="display: inline-block; padding: 0.75rem 1.5rem; text-decoration: none;">
+                            Jetzt mit PayPal bezahlen
+                        </a>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
         <?php if ($error): ?><div class="alert alert-error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+
+        <?php if (!$message): ?>
         <form method="post">
             <?php if (!$user): ?>
                 <div style="background: #fff3cd; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
@@ -105,6 +109,7 @@ $settings = settings();
             </label>
             <button class="btn-primary">Anfrage senden</button>
         </form>
+        <?php endif; ?>
     </main>
 </body>
 </html>

@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS bands (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     name TEXT NOT NULL,
-    email TEXT,
     city TEXT,
     genre TEXT,
     price INTEGER DEFAULT 0,
@@ -74,18 +73,4 @@ CREATE TABLE IF NOT EXISTS reviews (
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS payments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    request_id INTEGER NOT NULL,
-    amount REAL NOT NULL,
-    service_fee REAL NOT NULL,
-    total_amount REAL NOT NULL,
-    paypal_order_id TEXT,
-    paypal_payer_id TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    completed_at TEXT,
-    FOREIGN KEY(request_id) REFERENCES requests(id) ON DELETE CASCADE
 );
