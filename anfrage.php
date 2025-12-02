@@ -15,6 +15,8 @@ $user = currentUser();
 $message = '';
 $error = '';
 
+$requestId = null;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = [
         'band_id' => $bandId,
@@ -30,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Bitte Datum und Ort ausfüllen.';
     } else {
         createRequest($data);
+        $requestId = (int) db()->lastInsertId();
         $message = 'Anfrage gespeichert und an die Band gemeldet.';
         sendEmail('info@' . preg_replace('/\s+/', '', strtolower($band['name'])) . '.ch', 'Neue Anfrage', 'Neue Anfrage für ' . $band['name']);
     }
@@ -52,8 +55,21 @@ $settings = settings();
         <p>PayPal Zahlungsabwicklung ist <?= $settings['paypal_enabled'] === '1' ? 'aktiviert' : 'optional' ?>, Service Fee: <?= htmlspecialchars($settings['service_fee']) ?>%.</p>
     </header>
     <main>
-        <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
+        <?php if ($message): ?>
+            <div class="alert alert-success">
+                <?= htmlspecialchars($message) ?>
+                <?php if ($requestId && $settings['paypal_enabled'] === '1'): ?>
+                    <div style="margin-top: 1rem;">
+                        <a href="paypal-checkout.php?request_id=<?= $requestId ?>" class="btn-primary" style="display: inline-block; padding: 0.75rem 1.5rem; text-decoration: none;">
+                            Jetzt mit PayPal bezahlen
+                        </a>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
         <?php if ($error): ?><div class="alert alert-error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+
+        <?php if (!$message): ?>
         <form method="post">
             <label>Event-Datum
                 <input type="date" class="form-control" name="event_date" required>
@@ -72,6 +88,7 @@ $settings = settings();
             </label>
             <button class="btn-primary">Anfrage senden</button>
         </form>
+        <?php endif; ?>
     </main>
 </body>
 </html>
